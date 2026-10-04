@@ -9,6 +9,7 @@ free, non-commercial sharing.
 - **Transformer autocorrect and prediction in any alphabet:** Greek, Albanian (ë, ç), Cyrillic and others (patch 0001).
 - **Dictation cleanup:** after voice input, an LLM tidies the transcript or turns rambling into a short message, on a
   server you run, on the phone itself, or both in parallel (patches 0002 and 0003).
+- **Space bar touch area:** taps just above the space bar type a space instead of b/v/n (patch 0007).
 - **Training tooling** (`training/`): the typing model, voice model, dictionary and cleanup model for a new language.
 
 Languages built with it so far: Greek and Albanian (typing model, voice model, dictionary) and a Greek/Albanian/English
@@ -73,6 +74,20 @@ and importing them:
 - **Dictation cleanup:** *Download on-device model (1.0 GB)* next to the Import button.
 - **Safe:** nothing downloads without a tap, a metered connection asks first, the SHA-256 is checked, and the file is
   installed exactly like a manual import. The list comes from [`models/index.json`](models/index.json).
+
+### 0007: Space bar touch area
+
+`patches/0007-space-bar-touch-area.patch`. Near-misses on the space bar used to type the letter above it (usually b):
+
+- **The gap above the space bar now types a space.** Stock FUTO gives the gap between the bottom letter row and the
+  space bar to the letter above it.
+- **When the word you typed is complete** (space is a valid next key for "Smart key-hit detection"), the lower third of
+  the letters directly above the space bar also types a space. Stock FUTO let a boosted b beat a boosted space there.
+- **Setting:** Settings → Predictive text → *Space bar touch area*: Normal (the gap), Larger (+15% of a key) or Largest
+  (+30%). Only the area directly above the space bar changes.
+- **Token-mix fix (with patch 0001):** a letter key the typing model has no token for (ë or ç next to an English model)
+  is dropped from a tap's key mix and the next-nearest key takes its place, as in stock FUTO, instead of keeping an
+  empty slot.
 
 ### The build
 

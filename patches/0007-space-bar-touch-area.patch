@@ -1,0 +1,168 @@
+diff --git a/java/res/values/strings-spacebar.xml b/java/res/values/strings-spacebar.xml
+new file mode 100644
+index 000000000..7694ce627
+--- /dev/null
++++ b/java/res/values/strings-spacebar.xml
+@@ -0,0 +1,8 @@
++<?xml version="1.0" encoding="utf-8"?>
++<resources>
++    <string name="space_bar_touch_area">Space bar touch area</string>
++    <string name="space_bar_touch_area_subtitle">Taps just above the space bar type a space instead of the letter above it. Grows while the word you typed is complete</string>
++    <string name="space_bar_touch_area_normal">Normal (gap above the space bar)</string>
++    <string name="space_bar_touch_area_larger">Larger (+15% of a key)</string>
++    <string name="space_bar_touch_area_largest">Largest (+30% of a key)</string>
++</resources>
+diff --git a/java/src/org/futo/inputmethod/keyboard/KeyDetector.java b/java/src/org/futo/inputmethod/keyboard/KeyDetector.java
+index dbfc61ca2..e80c2b830 100644
+--- a/java/src/org/futo/inputmethod/keyboard/KeyDetector.java
++++ b/java/src/org/futo/inputmethod/keyboard/KeyDetector.java
+@@ -16,6 +16,7 @@
+ 
+ package org.futo.inputmethod.keyboard;
+ 
++import org.futo.inputmethod.latin.common.Constants;
+ import org.futo.inputmethod.latin.settings.Settings;
+ import org.futo.inputmethod.latin.settings.SettingsValues;
+ 
+@@ -107,6 +108,11 @@ public class KeyDetector {
+ 
+         final SettingsValues settingsValues = Settings.getInstance().getCurrent();
+ 
++        final Key spaceKey = detectSpaceBarBand(touchX, touchY, settingsValues);
++        if (spaceKey != null) {
++            return spaceKey;
++        }
++
+         if(mBoostedCodePoints != null && !mBoostedCodePoints.isEmpty()) {
+             for (final Key key : mKeyboard.getNearestKeys(touchX, touchY)) {
+                 if (mBoostedCodePoints.contains(key.getCode())) {
+@@ -153,6 +159,28 @@ public class KeyDetector {
+         return primaryKey;
+     }
+ 
++    /**
++     * Taps just above the space bar type a space: the gap between the bottom letter row and the space bar (which
++     * otherwise belongs to the letter above it, often b), plus a band of the letter row - "Space bar touch area" in
++     * % of a key height, or a third of a key height while the word typed so far is complete (space is a boosted next
++     * key). Only directly above the space bar.
++     */
++    @Nullable
++    private Key detectSpaceBarBand(final int touchX, final int touchY, final SettingsValues settingsValues) {
++        final Key spaceKey = mKeyboard.getKey(Constants.CODE_SPACE);
++        if (spaceKey == null) {
++            return null;
++        }
++        final int spaceTop = spaceKey.getY();
++        if (touchY >= spaceTop || touchX < spaceKey.getX() || touchX >= spaceKey.getX() + spaceKey.getWidth()) {
++            return null;
++        }
++        final boolean spaceBoosted = mBoostedCodePoints != null && mBoostedCodePoints.contains(Constants.CODE_SPACE);
++        final float bandFraction = Math.max(settingsValues.mSpaceBarTouchAreaPercent / 100.0f, spaceBoosted ? 0.33f : 0.0f);
++        final int band = spaceKey.getVerticalGap() + (int) (bandFraction * mKeyboard.mMostCommonKeyHeight);
++        return touchY >= spaceTop - band ? spaceKey : null;
++    }
++
+     public void updateBoostedCodePoints(@Nullable Set<Integer> validNextCodePoints) {
+         mBoostedCodePoints = validNextCodePoints;
+     }
+diff --git a/java/src/org/futo/inputmethod/latin/settings/Settings.java b/java/src/org/futo/inputmethod/latin/settings/Settings.java
+index 055c166a6..82092f2b7 100644
+--- a/java/src/org/futo/inputmethod/latin/settings/Settings.java
++++ b/java/src/org/futo/inputmethod/latin/settings/Settings.java
+@@ -113,6 +113,8 @@ public final class Settings implements SharedPreferences.OnSharedPreferenceChang
+     public static final String PREF_ENABLE_ARROW_ROW = "pref_enable_arrow_row";
+     public static final String PREF_ENABLE_ALT_PERIOD_KEY = "pref_enable_alt_period_key";
+     public static final String PREF_USE_DICT_KEY_BOOSTING = "pref_use_dict_key_boosting";
++    // Extra space bar touch area above the space bar, in % of a key height (0 = only the gap above it)
++    public static final String PREF_SPACE_BAR_TOUCH_AREA = "pref_space_bar_touch_area";
+ 
+     private static final String PREF_LAST_USED_PERSONALIZATION_TOKEN =
+             "pref_last_used_personalization_token";
+diff --git a/java/src/org/futo/inputmethod/latin/settings/SettingsValues.java b/java/src/org/futo/inputmethod/latin/settings/SettingsValues.java
+index 30803dc90..56a632ecd 100644
+--- a/java/src/org/futo/inputmethod/latin/settings/SettingsValues.java
++++ b/java/src/org/futo/inputmethod/latin/settings/SettingsValues.java
+@@ -102,6 +102,7 @@ public class SettingsValues {
+     public final boolean mIsArrowRowEnabled;
+     public final boolean mIsUsingAlternativePeriodKey;
+     public final boolean mUseDictionaryKeyBoosting;
++    public final int mSpaceBarTouchAreaPercent;
+     public final int mScreenMetrics;
+ 
+     public final boolean mBackspaceDeletesInsertedText;
+@@ -184,6 +185,7 @@ public class SettingsValues {
+         mIsArrowRowEnabled = prefs.getBoolean(Settings.PREF_ENABLE_ARROW_ROW, false);
+         mIsUsingAlternativePeriodKey = prefs.getBoolean(Settings.PREF_ENABLE_ALT_PERIOD_KEY, false) && SettingsValues.altPeriodKeyAllowedForLocale(mLocale);
+         mUseDictionaryKeyBoosting = prefs.getBoolean(Settings.PREF_USE_DICT_KEY_BOOSTING, true);
++        mSpaceBarTouchAreaPercent = prefs.getInt(Settings.PREF_SPACE_BAR_TOUCH_AREA, 0);
+         mUseContactsDict = prefs.getBoolean(Settings.PREF_KEY_USE_CONTACTS_DICT, true);
+         mUsePersonalizedDicts = prefs.getBoolean(Settings.PREF_KEY_USE_PERSONALIZED_DICTS, true);
+         mUseDoubleSpacePeriod = prefs.getBoolean(Settings.PREF_KEY_USE_DOUBLE_SPACE_PERIOD, true)
+diff --git a/java/src/org/futo/inputmethod/latin/uix/settings/pages/PredictiveText.kt b/java/src/org/futo/inputmethod/latin/uix/settings/pages/PredictiveText.kt
+index 1e70132ca..6c48c60ec 100644
+--- a/java/src/org/futo/inputmethod/latin/uix/settings/pages/PredictiveText.kt
++++ b/java/src/org/futo/inputmethod/latin/uix/settings/pages/PredictiveText.kt
+@@ -12,7 +12,10 @@ import org.futo.inputmethod.latin.settings.Settings
+ import org.futo.inputmethod.latin.uix.USE_TRANSFORMER_FINETUNING
+ import org.futo.inputmethod.latin.uix.settings.NavigationItemStyle
+ import org.futo.inputmethod.latin.uix.settings.Tip
++import org.futo.inputmethod.latin.uix.settings.DropDownPickerSettingItem
++import org.futo.inputmethod.latin.uix.settings.UserSetting
+ import org.futo.inputmethod.latin.uix.settings.UserSettingsMenu
++import org.futo.inputmethod.latin.uix.settings.useSharedPrefsInt
+ import org.futo.inputmethod.latin.uix.settings.useSharedPrefsBool
+ import org.futo.inputmethod.latin.uix.settings.userSettingDecorationOnly
+ import org.futo.inputmethod.latin.uix.settings.userSettingNavigationItem
+@@ -93,6 +96,13 @@ val PredictiveTextMenu = UserSettingsMenu(
+             default = {true}
+         ),
+ 
++        UserSetting(
++            name = R.string.space_bar_touch_area,
++            subtitle = R.string.space_bar_touch_area_subtitle,
++        ) {
++            SpaceBarTouchAreaSetting()
++        },
++
+         userSettingToggleSharedPrefs(
+             title = R.string.prefs_show_suggestions,
+             subtitle = R.string.prefs_show_suggestions_summary,
+@@ -119,4 +129,21 @@ val PredictiveTextMenu = UserSettingsMenu(
+         })
+         //}
+     )
+-)
+\ No newline at end of file
++)
++
++@Composable
++private fun SpaceBarTouchAreaSetting() {
++    val area = useSharedPrefsInt(Settings.PREF_SPACE_BAR_TOUCH_AREA, 0)
++    val options = mapOf(
++        0 to stringResource(R.string.space_bar_touch_area_normal),
++        15 to stringResource(R.string.space_bar_touch_area_larger),
++        30 to stringResource(R.string.space_bar_touch_area_largest),
++    )
++    DropDownPickerSettingItem(
++        label = stringResource(R.string.space_bar_touch_area),
++        options = options.keys.toList(),
++        selection = area.value,
++        onSet = { area.setValue(it) },
++        getDisplayName = { options[it] ?: "+$it%" },
++    )
++}
+diff --git a/native/jni/org_futo_inputmethod_latin_xlm_LanguageModel.cpp b/native/jni/org_futo_inputmethod_latin_xlm_LanguageModel.cpp
+index 6aaaf0d8c..89af9a75d 100644
+--- a/native/jni/org_futo_inputmethod_latin_xlm_LanguageModel.cpp
++++ b/native/jni/org_futo_inputmethod_latin_xlm_LanguageModel.cpp
+@@ -1145,7 +1145,9 @@ namespace latinime {
+                 for (int j = 0; j < NUM_TOKEN_MIX; j++) {
+                     int32_t c = pInfo->getKeyCodePoint(index_value[j].second);
+ 
+-                    if (codepoint_type((uint32_t)c) == CODEPOINT_TYPE_LETTER) {
++                    // a letter the model has no token for (e.g. ë with an English model) counts as a symbol, so the
++                    // next-nearest key takes its place in the mix, as the stock code did for non a-z keys
++                    if (codepoint_type((uint32_t)c) == CODEPOINT_TYPE_LETTER && state->getTokenIdForCodepoint(c) >= 0) {
+                     } else if(index_value[j].first > 0.0f) {
+                         index_value[j].first = 0.0f;
+                         needs_resorting = true;
