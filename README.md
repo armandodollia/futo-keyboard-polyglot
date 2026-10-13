@@ -83,8 +83,19 @@ and importing them:
   space bar to the letter above it.
 - **When the word you typed is complete** (space is a valid next key for "Smart key-hit detection"), the lower third of
   the letters directly above the space bar also types a space. Stock FUTO let a boosted b beat a boosted space there.
-- **Setting:** Settings → Predictive text → *Space bar touch area*: Normal (the gap), Larger (+15% of a key) or Largest
-  (+30%). Only the area directly above the space bar changes.
+- **Setting:** Settings → Predictive text → *Space bar touch area*. "Directly above" means the gap and letter area
+  right over the space bar; nothing else on the keyboard changes.
+
+  | Option | Gap above the space bar | Extra once the typed word is complete |
+  |---|---|---|
+  | Off | stock FUTO (gap goes to the letter) | none |
+  | Smallest | half the gap | none |
+  | Smaller | the gap | none |
+  | Small | the gap | +15% of a key, only if the letter under the finger can't continue the word |
+  | Normal (default) | the gap | +33% of a key |
+  | Larger / Largest | gap + 15% / + 30% of a key | +33% |
+
+  If you get extra spaces when continuing a complete word ("in" → "inn"), pick Small or smaller.
 - **Token-mix fix (with patch 0001):** a letter key the typing model has no token for (ë or ç next to an English model)
   is dropped from a tap's key mix and the next-nearest key takes its place, as in stock FUTO, instead of keeping an
   empty slot.
